@@ -10,10 +10,13 @@ Have fun!
 - Run `main.py`
 - Enjoy your sweet, sweet, existence.
 
+You can configure game size through `const.py`
+
 #TODO
 - Add Timer
 - Add Point Counter
 - Beautify
+- Victory screen
 - Stuff I forget
 
 Shared under the GNU GPLv3 License. No warranties included, software is provided 'as-is'. Duh.
