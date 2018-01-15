@@ -12,7 +12,7 @@ Have fun!
 
 You can configure game size through `const.py`
 
-#TODO
+# TODO
 - Add Timer
 - Add Point Counter
 - Beautify
