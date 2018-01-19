@@ -1,27 +1,24 @@
-import pygame
-from pygame.locals import *
+""" Objects for PySweeper. These are:
+ - The Terrain (container for all the plots)
+ - A Plot object that represents each individual plot
+"""
+
+
 from random import randrange, shuffle
 
+import pygame
+from pygame.locals import *
 
-from os import path
+from const import (
+    TERRAIN_MARGIN, PLOT_PADDING,
+    PLOT_SIZE, PLOT_TILES
+)
 
-from const import PLOT_PADDING, PLOT_SIZE, TERRAIN_MARGIN
-
-
-ROOT_PATH = path.dirname(__file__)
-RESOURCE_PATH = path.join(ROOT_PATH, 'res')
-IMAGE_PATH = path.join(RESOURCE_PATH, 'img')
-
-PLOT_TILES = {}
-
-for number in range(15):
-    PLOT_TILES[number] = pygame.image.load(
-        path.join(IMAGE_PATH, '{}.png'.format(number))
-    )
 
 class Terrain():
-    """God oject class that controls generation,
-    allocation and management of the terrain its plots."""
+    """ God oject class that controls generation, allocation
+    and management of the terrain and its plots.
+    """
 
     def __init__(self, terrain_side):
 
@@ -35,30 +32,35 @@ class Terrain():
 
 
     def get_stats(self):
-        """Return terrain stats for current game"""
+        """Return terrain stats for current game. """
 
         stats = (
-            "Side : {};".format(self.terrain_side),
-            "Number of plots : {};".format(self.plot_quantity),
-            "Number of mines : {};".format(self.mine_quantity)
+            "Terrain size: {0}x{0}; ".format(self.terrain_side),
+            "Number of plots: {}; ".format(self.plot_quantity),
+            "Number of mines: {};".format(self.mine_quantity)
         )
-        return str(stats)
+
+        return stats[0] + stats[1] + stats[2]
 
 
     def __generate_mine_map(self):
-        """Generate the map of the terrain
-        and fill it randomly with mines"""
+        """ Generate the map of the terrain
+        and fill it randomly with mines.
+        """
 
         if self.terrain_side == 9 or self.terrain_side == 10:
             self.mine_quantity = 10
         else:
-            # Int type conversion rounds down
+            # Int conversion rounds down
             self.mine_quantity = randrange(
-                5, int(self.plot_quantity / 5)
+                int(self.plot_quantity / 7),
+                int(self.plot_quantity / 5)
             )
 
-        # HACK for a list filled with 0
-        self.mine_map = [x - x for x in range(self.plot_quantity)]
+        # List filled with zero. These represent
+        # empty plots. Mines (where the value
+        # is 0) are added later
+        self.mine_map = [0] * self.plot_quantity
 
         # Add all the mines to the mine map
         for i in range(self.mine_quantity):
@@ -70,22 +72,31 @@ class Terrain():
 
 
     def __generate_plots(self):
-        """Generate the object for each plot.
-        These are instances of Plot"""
+        """ Generate a container object for
+        each plot. These are instances of Plot.
+        """
 
         self.plots = []
 
-        # Initial offset
+        # Initial offsets
+
+        # x and y are pixel coordinates
         x = y = TERRAIN_MARGIN
+
+        # These are plot quantity offsets.
+        # That is, the number of plots that have
+        # be generated on this row
         x_offset = y_offset = 0
 
         current_row_plotcount = 0
+
+        # Row level, starting from the top
         level = 1
 
         for i in range(self.plot_quantity):
 
             plot = Plot(
-                0, self.mine_map[i],
+                self.mine_map[i],
                 x, y,
                 x_offset, y_offset
             )
@@ -97,31 +108,31 @@ class Terrain():
             x += PLOT_PADDING + PLOT_SIZE
             x_offset += 1
 
-            # Once 1 times the terrain side quantity
-            # has been generated, descend one level
+            # As soon as the terrain side quantity has been
+            # generated once, descend one level, and repeat
             if current_row_plotcount == self.terrain_side:
 
-                # Reset x offsets
+                # Adjust and reset offsets
                 x = TERRAIN_MARGIN
                 x_offset = 0
-
                 y_offset += 1
 
                 y = TERRAIN_MARGIN + level * (PLOT_SIZE +
                     PLOT_PADDING)
+
                 current_row_plotcount = 0
                 level += 1
 
 
     def render_plots(self, display):
-        """Blit all plots to display."""
+        """Blit all plots to display. """
 
         for plot in self.plots:
             display.blit(plot.surface, (plot.rect.x, plot.rect.y))
 
 
     def update_plots(self, lmouse, rmouse, mouse_pos):
-        """Manage plots according to user interaction."""
+        """Update plots according to user interaction. """
 
         for plot in self.plots:
             if not plot.revealed:
@@ -132,17 +143,16 @@ class Terrain():
                             if plot.type == 1:
                                 plot.reveal(PLOT_TILES[14])
                                 self.reveal_all()
-                            # There are no adjacent mines,
-                            # so check around.
+                            # Clicked on plot with no adjacent
+                            # mines, so check around
                             elif self.get_adjacent_mines(plot) == 0:
                                 plot.reveal(PLOT_TILES[0])
-                                self.reveal_adjacent_empty_plots(plot)
-                            # There are adjacent mines, show how many.
+                                self.reveal_adjacent_plots(plot)
+                            # There are adjacent mines, show how many
                             else:
-                                plot.reveal(
-                                    PLOT_TILES[
-                                        self.get_adjacent_mines(plot)
-                                    ])
+                                plot.reveal(PLOT_TILES[
+                                    self.get_adjacent_mines(plot)
+                                ])
 
                 elif rmouse:
                     if plot.rect.collidepoint(mouse_pos):
@@ -169,7 +179,6 @@ class Terrain():
 
         adjacent_plots = []
 
-
         # Shift all offsets to be relative to the clicked plot
         for pair in adjacent_offsets:
             adjacent_offsets[pair][0] += x
@@ -190,7 +199,7 @@ class Terrain():
             ] if plot
         ]
 
-        return(adjacent_plots)
+        return adjacent_plots
 
 
     def get_adjacent_mines(self, plot):
@@ -211,84 +220,50 @@ class Terrain():
         and y_offset, returns None if none were found."""
 
         for plot in self.plots:
-            if(
+            if (
                 plot.x_offset == x_offset
                 and plot.y_offset == y_offset
             ):
                 return plot
 
 
-    def reveal_adjacent_empty_plots(self, plot):
+    def reveal_adjacent_plots(self, plot):
+        """ Reveal all adjacent plots, and those adjacent
+        to them, until all plots are adjacent to mines.
+        """
+
         adjacent_to = self.get_adjacent_plots
         adjacent_mines_to = self.get_adjacent_mines
-
-        exhausted = False
-
         tile = PLOT_TILES
 
-        adj_current = adjacent_to(plot)
-        adj_next = []
+        plot_queue = adjacent_to(plot)
+        next_queue = []
 
-        def sort(target):
-            adj = adjacent_mines_to(target)
-            for x in range(0, 9):
-                if adj == x:
-                    plot.reveal(tile[x])
+        # Empty iterables are False (PEP8)
+        while plot_queue:
 
-        def remove_duplicates(iterable):
-            for item in iterable:
-                if iterable.count(item) > 1:
-                    # There is more than one instance of item,
-                    # remove all of them except one.
-                    for i in range(iterable.count(item) - 1):
-                        iterable.remove(item)
-
-        while not exhausted:
-
-            for plot in adj_current:
+            for plot in plot_queue:
                 if not plot.revealed:
-                    # There are no adjacent mines
+
                     if adjacent_mines_to(plot) == 0:
                         plot.reveal(tile[0])
 
-                        for plot in adjacent_to(plot):
-                            if plot.type == 0:
-                                adj_next.append(plot)
+                        for adj_plot in adjacent_to(plot):
+                            if adj_plot not in next_queue:
+                                next_queue.append(adj_plot)
 
-                    # There are adj mines
                     else:
-                        sort(plot)
+                        plot.reveal(tile[adjacent_mines_to(plot)])
 
-            remove_duplicates(adj_next)
-            adj_current = []
-
-
-            # No new mines have been added to
-            # the queue, so all possible plots
-            # have been exhausted. We're done.
-            if len(adj_next) <= 0:
-                exhausted = True
-
-            for plot in adj_next:
-                # There are no adj mines
-                if adjacent_mines_to(plot) == 0:
-                    plot.reveal(tile[0])
-
-                    for plot in adjacent_to(plot):
-                        adj_current.append(plot)
-
-                # There are adj mines
-                else:
-                    sort(plot)
-
-            adj_next = []
-            remove_duplicates(adj_current)
+            plot_queue = next_queue
+            next_queue = []
 
 
     def check_victory(self):
-        """Check if the player has won, by verifying
-        that exclusivelyall plots with mines
-        have been marked."""
+        """Check if the player has won, by verifying that
+        exclusively all plots with mines have been marked.
+        """
+
         mines = self.mine_quantity
         marked_mines = []
         correct = 0
@@ -307,9 +282,12 @@ class Terrain():
 
         if correct == mines:
             print('WON')
+            self.reveal_all()
+
 
     def reveal_all(self):
-        """Unveil all the plots and their contents."""
+        """Unveil all the plots and their contents. """
+
         for plot in self.plots:
             if not plot.revealed:
                 # If the plot had a mine
@@ -333,8 +311,6 @@ class Terrain():
 
 class Plot():
     """Class that represents each individual plot.
-    State can be 0, 1 ot 2, which respectively
-    represent: unmarked, flagged, or unknown.
     Type can be 0 or 1: empty or mined.
     x and y are the plot's rect's coordinates.
     x_offset is the plot horizontal offset, starting
@@ -342,8 +318,8 @@ class Plot():
     y_offset is the same as x_offset, but vertically.
     """
 
-    def __init__(self, state, type, x, y, x_offset, y_offset):
-        self.state = state
+    def __init__(self, type, x, y, x_offset, y_offset):
+        self.state = 0
         self.type = type
         self.surface = pygame.surface.Surface((PLOT_SIZE, PLOT_SIZE))
         self.rect = self.surface.get_rect(topleft=(x, y))
@@ -356,33 +332,35 @@ class Plot():
 
     def reveal(self, tile):
         """Reveal the contents of the plot,
-        update tile according to surrounding mine quantity"""
+        update plot tile to display `tile` """
 
         self.revealed = True
 
-        # The dest coordinates are relative to the plot's
-        # surface.
+        # The destination coordinates are relative to
+        # the plot's surface.
         self.surface.blit(tile, (0, 0))
 
 
     def toggle_state(self):
-        """Toggle between plot tile display states."""
+        """Toggle between plot tile states. """
 
         if self.state < 2:
             self.state += 1
         else:
             self.state = 0
 
-        self.update_tile()
+        self._update_tile()
 
 
-    def update_tile(self):
+    def _update_tile(self):
+        """Update tile according to state. """
+
         # Unmarked
         if self.state == 0:
             self.surface.fill((100, 100, 100))
         # Flagged
         elif self.state == 1:
             self.surface.blit(PLOT_TILES[9], (0, 0))
-        # Unknown
+        # Neutral
         else:
             self.surface.blit(PLOT_TILES[10], (0, 0))
