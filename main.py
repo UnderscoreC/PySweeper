@@ -1,4 +1,4 @@
-''' PySweeper - A small Python/PyGame remake of the classic
+""" PySweeper - A small Python/PyGame remake of the classic
 
 Written by Cyprien N, 2018
 Feel free to do what you like with it.
@@ -8,7 +8,9 @@ USAGE:
 configuration is typically fine).
 - install pygame if you haven't already (`pip install pygame`)
 - run main.py
-'''
+"""
+
+# pylint: disable=W0614, no-member, invalid-name, undefined-variable
 
 import pygame
 from pygame.locals import *
@@ -46,26 +48,26 @@ def get_size():
     return size
 
 
-terrain_side = get_size()
+TERRAIN_SIDE = get_size()
 
 # Generate display size : PLOT_SIZE per plot
 # PLOT_PADDING between them
 # TERRAIN_MARGIN on each side
 
 SCREEN_SIZE = (
-    (PLOT_SIZE * terrain_side)
-    + PLOT_PADDING * (terrain_side - 2)
+    (PLOT_SIZE * TERRAIN_SIDE)
+    + PLOT_PADDING * (TERRAIN_SIDE - 2)
     + TERRAIN_MARGIN * 2
 )
 
-terrain = Terrain(terrain_side)
+terrain = Terrain(TERRAIN_SIDE)
 print(terrain.get_stats())
 
 
 pygame.init()
 
 pygame.display.set_icon(ICON)
-display = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
+DISPLAY = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
 pygame.display.set_caption("PySweeper")
 
 is_left_click = False
@@ -115,6 +117,6 @@ while True:
     # Render queue
     # Highest last
 
-    display.fill((10, 10, 10))
-    terrain.render_plots(display)
+    DISPLAY.fill((10, 10, 10))
+    terrain.render_plots(DISPLAY)
     pygame.display.update()

@@ -7,9 +7,8 @@ from os import path
 from pygame import image, transform
 
 
-# Max recommended value: 60
 PLOT_SIZE = 60
-PLOT_PADDING = 3
+PLOT_PADDING = 2
 TERRAIN_MARGIN = 20
 
 ## Don't touch these
@@ -29,5 +28,6 @@ for number in range(15):
         pil(path.join(IMAGE_PATH, '{}.png'.format(number))),
         (PLOT_SIZE, PLOT_SIZE)
     )
+
 
 ICON = image.load(path.join(IMAGE_PATH, 'icon.png'))
