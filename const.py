@@ -2,7 +2,7 @@
 You are free to edit (some of) these.
 """
 
-from os import path
+from os import path, system, name
 
 from pygame import image, transform
 
@@ -29,5 +29,7 @@ for number in range(15):
         (PLOT_SIZE, PLOT_SIZE)
     )
 
-
 ICON = image.load(path.join(IMAGE_PATH, 'icon.png'))
+
+# Clear png_read_image errors
+system('cls' if name == 'nt' else 'clear')

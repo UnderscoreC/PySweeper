@@ -38,14 +38,14 @@ class Terrain():
         and fill it randomly with mines.
         """
 
-        if self.terrain_side == 9 or self.terrain_side == 10:
-            self.mine_quantity = 10
-        else:
-            # Int conversion rounds down
-            self.mine_quantity = randrange(
+        self.mine_quantity = (
+            10 if self.terrain_side == 9 or self.terrain_side == 10
+            else randrange(
+                # Int conversion rounds down
                 int(self.plot_quantity / 7),
                 int(self.plot_quantity / 5)
             )
+        )
 
         # List filled with zero. These represent
         # empty plots. Mines (where the value
