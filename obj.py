@@ -643,13 +643,4 @@ class Stat_Manager():
                             self.mouse_freed = False
                         if b == 'b':
                             self.board_shown = True
-
-
-
-
-
-
-
-
-
-
+                          
