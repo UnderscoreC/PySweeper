@@ -13,10 +13,8 @@ Have fun!
 You can configure game size through `const.py`
 
 # TODO
-- Add Timer
-- Add Point Counter
 - Beautify
-- Victory screen
-- Stuff I forget
+- Improve victory screen
+- Find stuff TODO
 
 Shared under the GNU GPLv3 License. No warranties included, software is provided 'as-is'. Duh.
