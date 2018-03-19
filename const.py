@@ -1,21 +1,42 @@
-""" Universal constants for PySweeper.
+""" Global constants for PySweeper.
 You are free to edit (some of) these.
 """
 
 from os import path, system, name
 
-from pygame import image, transform
+from pygame import image, transform, display
 
+# You can customize these
 
 PLOT_SIZE = 60
-PLOT_PADDING = 2
-TERRAIN_MARGIN = 20
+PLOT_PADDING = 0
+# Terrain margin min = 30
+TERRAIN_MARGIN = 30
+
 
 ## Don't touch these
 
+check = (
+    PLOT_SIZE > 0,
+    PLOT_PADDING >= 0,
+)
+
+try:
+    assert all(check)
+except AssertionError:
+    raise AssertionError('All values in const.py must be positive!')
+
+TERRAIN_MARGIN = TERRAIN_MARGIN if TERRAIN_MARGIN >= 30 else 30
+
+# Path generation
+
 ROOT_PATH = path.dirname(__file__)
-# RESOURCE_PATH = path.join(ROOT_PATH, 'res')
-IMAGE_PATH = path.join(ROOT_PATH, 'res', 'img')
+RESOURCE_PATH = path.join(ROOT_PATH, 'res')
+IMAGE_PATH = path.join(RESOURCE_PATH, 'img')
+
+# Get display height
+display.init()
+DISPLAY_HEIGHT = display.Info().current_h
 
 # Image preloading
 PLOT_TILES = {}

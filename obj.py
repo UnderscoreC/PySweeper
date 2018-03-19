@@ -7,27 +7,43 @@
 
 from random import randrange, shuffle
 
-import pygame
-from pygame.locals import *
+from pygame import font, surface, time
 
 from const import (
     TERRAIN_MARGIN, PLOT_PADDING,
-    PLOT_SIZE, PLOT_TILES
+    PLOT_SIZE, PLOT_TILES,
+    RESOURCE_PATH, DISPLAY_HEIGHT
 )
 
+# Font preloading
+font.init()
+SF = {}
 
-class Terrain():
+for size in (32, 64, int(1 / 12 * DISPLAY_HEIGHT)):
+    exec(
+        "SF_{0} = font.Font(RESOURCE_PATH + '\\sfm.otf', {0})".format(
+            size
+        )
+    )
+    exec("SF[{0}] = SF_{0}".format(size))
+
+
+class Terrain_Manager():
     """ God oject class that controls generation, allocation
     and management of the terrain and its plots.
     """
 
     def __init__(self, terrain_side):
-
         # Terrain side is the number of plots
         # along one side of the game terrain
         self.terrain_side = terrain_side
         self.plot_quantity = terrain_side ** 2
+
+
         self.is_first_click = True
+        self.playing = True
+        self.marked_mines = 0
+        self.plots = []
 
         self.__generate_mine_map()
         self.__generate_plots()
@@ -64,8 +80,6 @@ class Terrain():
         """ Generate a container object for
         each plot. These are instances of Plot.
         """
-
-        self.plots = []
 
         # Initial offsets
         # x and y are pixel coordinates
@@ -111,8 +125,8 @@ class Terrain():
                 level += 1
 
 
-    def print_mine_map(self):
-        """Print minemap, formatted to match terrain. """
+    def _print_mine_map(self):
+        """ Print minemap, formatted to match terrain. """
 
         self.mine_map = []
 
@@ -132,29 +146,31 @@ class Terrain():
 
 
     def get_stats(self, minemap=False):
-        """Return terrain stats for current game. """
-
-        stats = (
-            "Terrain size: {0}x{0}; ".format(self.terrain_side),
-            "Number of plots: {}; ".format(self.plot_quantity),
-            "Number of mines: {};".format(self.mine_quantity)
-        )
+        """ Return various game stats for current game.
+        If minemap, print a map of all the mines
+        """
 
         if minemap:
-            self.print_mine_map()
+            self._print_mine_map()
 
-        return stats[0] + stats[1] + stats[2]
+        return [
+            self.terrain_side, self.plot_quantity,
+            self.mine_quantity, self.marked_mines
+        ]
 
 
     def render_plots(self, display):
-        """Blit all plots to display. """
+        """ Blit all plots to display. """
 
         for plot in self.plots:
             display.blit(plot.surface, (plot.rect.x, plot.rect.y))
 
 
     def update_plots(self, lmouse, rmouse, mouse_pos):
-        """Update plots according to user interaction. """
+        """ Update plots according to user interaction. """
+
+        if not self.playing:
+            return
 
         for plot in self.plots:
             if not plot.revealed:
@@ -167,8 +183,9 @@ class Terrain():
                                 # Player can't die on first click
                                 if not self.is_first_click:
                                     plot.reveal(PLOT_TILES[14])
+                                    print('You died!')
                                     self.reveal_all()
-                                    # Return so it doesn't override
+                                    # Return so it doesn't
                                     # repaint over
                                     return
 
@@ -191,7 +208,11 @@ class Terrain():
 
                 elif rmouse:
                     if plot.rect.collidepoint(mouse_pos):
-                        plot.toggle_state()
+                        state = plot.toggle_state()
+                        if state == 1:
+                            self.marked_mines += 1
+                        elif state == 2:
+                            self.marked_mines -= 1
 
                     # Game can only be won from a right-click
                     self.check_victory()
@@ -223,7 +244,7 @@ class Terrain():
 
 
     def get_adjacent_plots(self, plot):
-        """Return a list with all adjacent plots. """
+        """ Return a list with all adjacent plots. """
 
         x = plot.x_offset
         y = plot.y_offset
@@ -276,7 +297,7 @@ class Terrain():
 
 
     def get_plot(self, x_offset, y_offset):
-        """ Returns a plot that matches the given x_offset
+        """ Returns the plot that matches the given x_offset
         and y_offset, returns None if none were found.
         """
 
@@ -329,28 +350,25 @@ class Terrain():
         """
 
         mines = self.mine_quantity
-        marked_mines = []
-        correct = 0
 
-        marked_mines = [
-            plot for plot in self.plots
+        # Get a list with the types of all marked plots
+        # If the player has marked them all properly,
+        # all(marked) should return True
+        marked = [
+            plot.type for plot in self.plots
             if plot.state == 1
-            and plot not in marked_mines
         ]
 
-        for plot in marked_mines:
-            if plot.type == 1:
-                correct += 1
-            else:
-                correct -= 1
-
-        if correct == mines:
-            print('WON')
-            self.reveal_all()
+        if self.marked_mines == mines:
+            if all(marked):
+                print('Victory!')
+                self.reveal_all()
 
 
     def reveal_all(self):
-        """Unveil all the plots and their contents. """
+        """ Unveil all the plots. Sets self.playing to False. """
+
+        self.playing = False
 
         for plot in self.plots:
             if not plot.revealed:
@@ -371,6 +389,18 @@ class Terrain():
                     ])
 
 
+    def restart(self):
+        """ Restart new game. """
+        self.is_first_click = True
+        self.playing = True
+        self.marked_mines = 0
+        self.plots = []
+
+        self.__generate_mine_map()
+        self.__generate_plots()
+
+
+
 class Plot():
     """ Class that represents each individual plot.
     Type can be 0 or 1: empty or mined.
@@ -383,7 +413,7 @@ class Plot():
     def __init__(self, type, x, y, x_offset, y_offset):
         self.state = 0
         self.type = type
-        self.surface = pygame.surface.Surface((PLOT_SIZE, PLOT_SIZE))
+        self.surface = surface.Surface((PLOT_SIZE, PLOT_SIZE))
         self.rect = self.surface.get_rect(topleft=(x, y))
         self.surface.fill((100, 100, 100))
         self.x_offset, self.y_offset = x_offset, y_offset
@@ -402,16 +432,20 @@ class Plot():
 
 
     def toggle_state(self):
-        """Toggle between plot tile states. """
+        """ Toggle between plot tile states.
+        Returns 0 if unmarked, 1 if marked,
+        or 2 if unknown.
+        """
 
         self.state += 1
         self.state %= 3
-
         self._update_tile()
+
+        return self.state
 
 
     def _update_tile(self):
-        """Update tile according to state. """
+        """ Update tile according to state. """
 
         # Unmarked
         if self.state == 0:
@@ -419,6 +453,203 @@ class Plot():
         # Flagged
         elif self.state == 1:
             self.surface.blit(PLOT_TILES[9], (0, 0))
-        # Neutral
+        # Unknown
         else:
             self.surface.blit(PLOT_TILES[10], (0, 0))
+
+
+class Stat_Manager():
+    """ Object that controls all the game's
+    text-based visuals, like minecount, time,
+    options.
+    """
+
+    def __init__(self, display_size, terrain):
+        self.size = display_size
+        self.terrain = terrain
+
+        self.clock = time.Clock()
+        self.time = {'m': 0, 's': 0.0}
+
+        self.board_shown = False
+        self.mouse_freed = False
+
+        self.__render_options()
+
+
+    def update_time(self):
+        """ Record time user has spent playing. """
+
+        self.clock.tick()
+
+        if not self.terrain.playing:
+            # Continue calling this function
+            # so that when we start it again,
+            # it does not jump to add a large
+            # amount of time. This happens because
+            # it returns the amount of time between
+            # consecutive calls.
+            self.clock.get_time()
+            return
+
+        self.time['s'] += self.clock.get_time()
+
+        if self.time['s'] > 60000:
+            self.time['m'] += 1
+            self.time['s'] = 0.0
+
+
+    def _render(self, text, font, color, bcolor=None):
+        """ Return a surface on which text is rendered. """
+
+        rendered = font.render(str(text), True, color, bcolor)
+        return rendered
+
+
+    def __render_options(self):
+            """ Render surfaces of all option buttons. """
+
+            restart = {
+                's': self._render(
+                    "Restart", SF[int(1 / 12 * DISPLAY_HEIGHT)],
+                    (255, 255, 255), (0, 0, 0)
+                )
+            }
+            restart['w'] = restart['s'].get_width()
+            restart['c'] = (
+                (self.size - restart['w']) / 2,
+                1 / 5 * self.size
+            )
+            restart['r'] = restart['s'].get_rect(topleft=restart['c'])
+
+            show_board = {
+                's': self._render(
+                    "Show board", SF[int(1 / 12 * DISPLAY_HEIGHT)],
+                    (255, 255, 255), (0, 0, 0)
+                )
+            }
+            show_board['w'] = show_board['s'].get_width()
+            show_board['c'] = (
+                (self.size - show_board['w']) / 2,
+                3 / 5 * self.size
+            )
+            show_board['r'] = show_board['s'].get_rect(topleft=show_board['c'])
+
+            escape = {
+                's': self._render(
+                    " Return ", SF[32], (0, 0, 0), (245, 245, 245)
+                )
+            }
+            escape['w'] = escape['s'].get_width()
+            escape['c'] = (
+                (self.size - escape['w']) / 2,
+                (TERRAIN_MARGIN - escape['s'].get_height()) / 2
+            )
+            escape['r'] = escape['s'].get_rect(topleft=escape['c'])
+
+            self.options = {
+                'r': restart,
+                'b': show_board,
+                'e': escape
+            }
+
+
+    def render_statbar(self, target):
+        """ Blit all status bar elements to target. """
+
+        ls = lambda x: len(str(x))
+
+        time = self._render(
+            '{0}{2}:{1}{3}'.format(
+                # The replacements 0 and 1 are to add
+                # leading zeroes to the clock seconds,
+                # so it does not shift around
+                '0' if ls(self.time['m']) < 2 else '',
+                '0' if ls(int(self.time['s'] / 1000)) < 2 else '',
+                self.time['m'], int(self.time['s'] / 1000)
+            ),
+            SF[32], (255, 255, 255)
+        )
+
+        stats = self.terrain.get_stats()
+        mm = stats[2] - stats[3]
+
+        marked = self._render(
+            "Mines: {}{}".format(
+                # Add space so it doesn't
+                # constantly shift around
+                ' ' * (2 - ls(mm)),
+                mm,
+            ),
+            SF[32], (255, 255, 255)
+        )
+
+        height = (TERRAIN_MARGIN - time.get_height()) / 2
+
+        target.blit(time, (1 / 5 * self.size, height))
+        target.blit(
+            marked, (4 / 5 * self.size - marked.get_width(), height)
+        )
+
+
+    def render_options(self, target):
+        """ Blit all options to target, if player has
+        won or lost. """
+
+        if self.terrain.playing:
+            return
+
+        opt = self.options
+
+        if self.board_shown:
+            target.blit(opt['e']['s'], opt['e']['c'])
+        else:
+            target.blit(opt['r']['s'], opt['r']['c'])
+            target.blit(opt['b']['s'], opt['b']['c'])
+
+
+    def update_options(self, lmouse, mouse_pos):
+        """ Check if user clicks on any option
+        button, and react accordingly. """
+
+        if self.terrain.playing:
+            return
+
+        if not self.mouse_freed:
+            # Player has to free the mouse
+            # once before he's able to click again
+            if lmouse:
+                return
+            else:
+                self.mouse_freed = True
+
+        opt = self.options
+
+        if self.terrain.playing:
+            return
+
+        if lmouse:
+            for b in ('r', 'b', 'e'):
+                if opt[b]['r'].collidepoint(mouse_pos):
+                    if self.board_shown:
+                        if b == 'e':
+                            self.board_shown = False
+                    else:
+                        if b == 'r':
+                            print("New game! Here we go!")
+                            self.terrain.restart()
+                            self.time['m'] = 0
+                            self.time['s'] = 0.0
+                            self.mouse_freed = False
+                        if b == 'b':
+                            self.board_shown = True
+
+
+
+
+
+
+
+
+
+

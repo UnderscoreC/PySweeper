@@ -15,20 +15,25 @@ configuration is typically fine).
 import pygame
 from pygame.locals import *
 
-from obj import Terrain
+from obj import Terrain_Manager, Stat_Manager
 from const import (
     PLOT_PADDING, PLOT_SIZE,
-    TERRAIN_MARGIN, ICON
+    TERRAIN_MARGIN, ICON,
+    DISPLAY_HEIGHT
 )
 
 
-def get_size():
+def get_size(min_size, max_size):
     """ Get the user disired length of the terrain side
     and return.
     """
 
     print("Welcome to PySweeper!")
-    print("Please pick a terrain size, between 9 and 16")
+    print(
+        "Please pick a terrain size, between {} and {}".format(
+            min_size, max_size
+        )
+    )
 
     is_answer_gotten = False
 
@@ -37,31 +42,49 @@ def get_size():
             size = int(input(
                 "How long do you want your terrain side to be? "
             ))
-            if size < 9:
-                print("Error : input should be at least 9")
-            elif size > 16:
-                print("Error : Max size is 16")
+            if size < min_size:
+                print("Error: input should be at least", min_size)
+            elif size > max_size:
+                print("Error: Max size is", max_size)
             else:
                 is_answer_gotten = True
         except ValueError:
-            print("Error : input should be a number!")
+            print("Error: input should be a number!")
     return size
 
 
-TERRAIN_SIDE = get_size()
+TERRAIN_SIDE = get_size(9, 64)
 
 # Generate display size : PLOT_SIZE per plot
 # PLOT_PADDING between them
 # TERRAIN_MARGIN on each side
-
 SCREEN_SIZE = (
     (PLOT_SIZE * TERRAIN_SIDE)
     + PLOT_PADDING * (TERRAIN_SIDE - 2)
     + TERRAIN_MARGIN * 2
 )
 
-terrain = Terrain(TERRAIN_SIDE)
-print(terrain.get_stats())
+
+terrain = Terrain_Manager(TERRAIN_SIDE)
+manager = Stat_Manager(SCREEN_SIZE, terrain)
+
+print(
+    "Terrain size: {0}x{0}; "
+    "Number of plots: {1}; "
+    "Number of mines: {2};".format(
+        *terrain.get_stats()
+    )
+)
+
+# Check and warn user if SCREEN_SIZE
+# is taller than display
+if SCREEN_SIZE > DISPLAY_HEIGHT:
+    print(
+        "Warning: game terrain taller than "
+        "screen height. The entire board will "
+        "not fit. Modify values in const.py "
+        "to resize."
+    )
 
 
 pygame.init()
@@ -73,10 +96,14 @@ pygame.display.set_caption("PySweeper")
 is_left_click = False
 is_right_click = False
 
+# Just to avoid those ugly 'not initialized' messages
+quit = False
+
 while True:
     for event in pygame.event.get():
         if event.type == QUIT:
             pygame.quit()
+            quit = True
 
         if event.type == MOUSEBUTTONDOWN:
             # Use elif because we only want one button to be
@@ -95,6 +122,8 @@ while True:
             if event.button == 3:
                 is_right_click = False
 
+    if quit:
+        break
 
     terrain.update_plots(
         is_left_click,
@@ -102,21 +131,30 @@ while True:
         pygame.mouse.get_pos()
     )
 
+    manager.update_options(
+        is_left_click,
+        pygame.mouse.get_pos()
+    )
+
+
     # Place this after plot updating.
     # This forces the user to unpress the
     # mouse before being able to press again
     # It works by blocking mouse presses
     # from entering the event queue
-    # until mouseup
     if is_right_click or is_left_click:
         pygame.event.set_blocked(MOUSEBUTTONDOWN)
         is_right_click = False
         is_left_click = False
 
 
+    manager.update_time()
+
     # Render queue
     # Highest last
-
     DISPLAY.fill((10, 10, 10))
     terrain.render_plots(DISPLAY)
+    manager.render_statbar(DISPLAY)
+    manager.render_options(DISPLAY)
+
     pygame.display.update()
