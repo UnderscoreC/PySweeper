@@ -41,7 +41,8 @@ class Terrain_Manager():
 
 
         self.is_first_click = True
-        self.playing = True
+        # 0 = playing, 1 = lost, 2 = won
+        self.play_state = 0
         self.marked_mines = 0
         self.plots = []
 
@@ -169,7 +170,7 @@ class Terrain_Manager():
     def update_plots(self, lmouse, rmouse, mouse_pos):
         """ Update plots according to user interaction. """
 
-        if not self.playing:
+        if self.play_state:
             return
 
         for plot in self.plots:
@@ -185,6 +186,7 @@ class Terrain_Manager():
                                     plot.reveal(PLOT_TILES[14])
                                     print('You died!')
                                     self.reveal_all()
+                                    self.play_state = 1
                                     # Return so it doesn't
                                     # repaint over
                                     return
@@ -362,13 +364,12 @@ class Terrain_Manager():
         if self.marked_mines == mines:
             if all(marked):
                 print('Victory!')
+                self.play_state = 2
                 self.reveal_all()
 
 
     def reveal_all(self):
-        """ Unveil all the plots. Sets self.playing to False. """
-
-        self.playing = False
+        """ Unveil all the plots. """
 
         for plot in self.plots:
             if not plot.revealed:
@@ -392,7 +393,7 @@ class Terrain_Manager():
     def restart(self):
         """ Restart new game. """
         self.is_first_click = True
-        self.playing = True
+        self.play_state = 0
         self.marked_mines = 0
         self.plots = []
 
@@ -482,7 +483,7 @@ class Stat_Manager():
 
         self.clock.tick()
 
-        if not self.terrain.playing:
+        if self.terrain.play_state:
             # Continue calling this function
             # so that when we start it again,
             # it does not jump to add a large
@@ -535,6 +536,32 @@ class Stat_Manager():
             )
             show_board['r'] = show_board['s'].get_rect(topleft=show_board['c'])
 
+            defeat = {
+                's': self._render(
+                    "You lost!", SF[int(1 / 12 * DISPLAY_HEIGHT)],
+                    (254, 0, 0), (0, 0, 0)
+                )
+            }
+            defeat['w'] = defeat['s'].get_width()
+            defeat['c'] = (
+                (self.size - defeat['w']) / 2,
+                2 / 5 * self.size
+            )
+            defeat['r'] = defeat['s'].get_rect(topleft=defeat['c'])
+
+            victory = {
+                's': self._render(
+                    "You won!", SF[int(1 / 12 * DISPLAY_HEIGHT)],
+                    (0, 200, 83), (0, 0, 0)
+                )
+            }
+            victory['w'] = victory['s'].get_width()
+            victory['c'] = (
+                (self.size - victory['w']) / 2,
+                2 / 5 * self.size
+            )
+            victory['r'] = victory['s'].get_rect(topleft=victory['c'])
+
             escape = {
                 's': self._render(
                     " Return ", SF[32], (0, 0, 0), (245, 245, 245)
@@ -550,7 +577,9 @@ class Stat_Manager():
             self.options = {
                 'r': restart,
                 'b': show_board,
-                'e': escape
+                'e': escape,
+                'v': victory,
+                'd': defeat
             }
 
 
@@ -596,7 +625,7 @@ class Stat_Manager():
         """ Blit all options to target, if player has
         won or lost. """
 
-        if self.terrain.playing:
+        if not self.terrain.play_state:
             return
 
         opt = self.options
@@ -606,13 +635,17 @@ class Stat_Manager():
         else:
             target.blit(opt['r']['s'], opt['r']['c'])
             target.blit(opt['b']['s'], opt['b']['c'])
+            if self.terrain.play_state == 1:
+                target.blit(opt['d']['s'], opt['d']['c'])
+            else:
+                target.blit(opt['v']['s'], opt['v']['c'])
 
 
     def update_options(self, lmouse, mouse_pos):
         """ Check if user clicks on any option
         button, and react accordingly. """
 
-        if self.terrain.playing:
+        if not self.terrain.play_state:
             return
 
         if not self.mouse_freed:
@@ -624,9 +657,6 @@ class Stat_Manager():
                 self.mouse_freed = True
 
         opt = self.options
-
-        if self.terrain.playing:
-            return
 
         if lmouse:
             for b in ('r', 'b', 'e'):
