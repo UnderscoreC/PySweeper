@@ -33,6 +33,7 @@ TERRAIN_MARGIN = TERRAIN_MARGIN if TERRAIN_MARGIN >= 30 else 30
 ROOT_PATH = path.dirname(__file__)
 RESOURCE_PATH = path.join(ROOT_PATH, 'res')
 IMAGE_PATH = path.join(RESOURCE_PATH, 'img')
+FONT_PATH = path.join(RESOURCE_PATH, 'sfm.otf')
 
 # Get display height
 display.init()

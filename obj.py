@@ -1,6 +1,7 @@
 """ Objects for PySweeper. These are:
  - The Terrain (container for all the plots)
  - A Plot object that represents each individual plot
+ - A manager that controls all other options
 """
 
 # pylint: disable=W0614, no-member
@@ -12,7 +13,7 @@ from pygame import font, surface, time
 from const import (
     TERRAIN_MARGIN, PLOT_PADDING,
     PLOT_SIZE, PLOT_TILES,
-    RESOURCE_PATH, DISPLAY_HEIGHT
+    FONT_PATH, DISPLAY_HEIGHT
 )
 
 # Font preloading
@@ -21,11 +22,10 @@ SF = {}
 
 for size in (32, 64, int(1 / 12 * DISPLAY_HEIGHT)):
     exec(
-        "SF_{0} = font.Font(RESOURCE_PATH + '\\sfm.otf', {0})".format(
+        "SF[{0}] = font.Font(FONT_PATH, {0})".format(
             size
         )
     )
-    exec("SF[{0}] = SF_{0}".format(size))
 
 
 class Terrain_Manager():
@@ -147,7 +147,7 @@ class Terrain_Manager():
 
     def get_stats(self, minemap=False):
         """ Return various game stats for current game.
-        If minemap, print a map of all the mines
+        If minemap, print a map of all the mines.
         """
 
         if minemap:
@@ -643,4 +643,3 @@ class Stat_Manager():
                             self.mouse_freed = False
                         if b == 'b':
                             self.board_shown = True
-                          
