@@ -4,13 +4,14 @@ Written by Cyprien N, 2018
 Feel free to do what you like with it.
 
 USAGE:
-- customize const.py to your liking (although default
-configuration is typically fine).
-- install pygame if you haven't already (`pip install pygame`)
-- run main.py
+ - customize const.py to your liking (although default
+   configuration is typically fine).
+ - install pygame if you haven't already (`pip install pygame`)
+ - run main.py
 """
 
-# pylint: disable=W0614, no-member, invalid-name, undefined-variable
+# pylint: disable=unused-wildcard-import, no-member
+# pylint: disable=invalid-name, undefined-variable
 
 import pygame
 from pygame.locals import *
@@ -113,29 +114,25 @@ while True:
             elif event.button == 3:
                 is_right_click = True
 
+            # Only need to update on mouse-click
+            terrain.update_plots(
+                is_left_click,
+                is_right_click,
+                pygame.mouse.get_pos()
+            )
+
         if event.type == MOUSEBUTTONUP:
             # User has lifted mouse buttons
             # Allow mouse press events back into the queue
             pygame.event.set_allowed(MOUSEBUTTONDOWN)
-            if event.button == 1:
-                is_left_click = False
-            if event.button == 3:
-                is_right_click = False
 
     if quit:
         break
-
-    terrain.update_plots(
-        is_left_click,
-        is_right_click,
-        pygame.mouse.get_pos()
-    )
 
     manager.update_options(
         is_left_click,
         pygame.mouse.get_pos()
     )
-
 
     # Place this after plot updating.
     # This forces the user to unpress the

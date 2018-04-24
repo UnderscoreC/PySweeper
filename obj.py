@@ -4,7 +4,7 @@
  - A manager that controls all other options
 """
 
-# pylint: disable=W0614, no-member
+# pylint: disable=no-member
 
 from random import randrange, shuffle
 
@@ -21,11 +21,7 @@ font.init()
 SF = {}
 
 for size in (32, 64, int(1 / 12 * DISPLAY_HEIGHT)):
-    exec(
-        "SF[{0}] = font.Font(FONT_PATH, {0})".format(
-            size
-        )
-    )
+    SF[size] = font.Font(FONT_PATH, size)
 
 
 class Terrain_Manager():
@@ -183,7 +179,7 @@ class Terrain_Manager():
                             if plot.type == 1:
                                 # Player can't die on first click
                                 if not self.is_first_click:
-                                    plot.reveal(PLOT_TILES[14])
+                                    plot.reveal(14)
                                     print('You died!')
                                     self.reveal_all()
                                     self.play_state = 1
@@ -194,19 +190,15 @@ class Terrain_Manager():
                                 else:
                                     self.relocate_mine(plot)
 
-
                             self.is_first_click = False
 
+                            adjacent = self.get_adjacent_mines(plot)
 
-                            if self.get_adjacent_mines(plot) == 0:
+                            if adjacent == 0:
                                 # There aren't any, check around
                                 self.reveal_adjacent_plots(plot)
 
-                            # Reveal plot according to amount of
-                            # neighboring mines
-                            plot.reveal(PLOT_TILES[
-                                self.get_adjacent_mines(plot)
-                            ])
+                            plot.reveal(adjacent)
 
                 elif rmouse:
                     if plot.rect.collidepoint(mouse_pos):
@@ -251,8 +243,6 @@ class Terrain_Manager():
         x = plot.x_offset
         y = plot.y_offset
 
-        # Holds temporarily all the offsets to
-        # get adjacent plots.
         # [x_offset_shift, y_offset_shift]
         adjacent_offsets = {
             1: [-1, -1], 2: [0, -1], 3: [1, -1],
@@ -303,12 +293,14 @@ class Terrain_Manager():
         and y_offset, returns None if none were found.
         """
 
-        for plot in self.plots:
-            if (
-                plot.x_offset == x_offset
-                and plot.y_offset == y_offset
-            ):
-                return plot
+        shift = (y_offset * self.terrain_side) + x_offset
+
+        if (
+            shift >= 0 and shift < self.plot_quantity
+            and self.plots[shift].x_offset == x_offset
+            and self.plots[shift].y_offset == y_offset
+        ):
+            return self.plots[shift]
 
 
     def reveal_adjacent_plots(self, plot):
@@ -318,7 +310,6 @@ class Terrain_Manager():
 
         adjacent_to = self.get_adjacent_plots
         adjacent_mines_to = self.get_adjacent_mines
-        tile = PLOT_TILES
 
         plot_queue = adjacent_to(plot)
         next_queue = []
@@ -330,14 +321,14 @@ class Terrain_Manager():
                 if not plot.revealed:
 
                     if adjacent_mines_to(plot) == 0:
-                        plot.reveal(tile[0])
+                        plot.reveal(0)
 
                         for adj_plot in adjacent_to(plot):
                             if adj_plot not in next_queue:
                                 next_queue.append(adj_plot)
 
                     else:
-                        plot.reveal(tile[adjacent_mines_to(plot)])
+                        plot.reveal(adjacent_mines_to(plot))
 
             plot_queue = [
                 plot for plot in next_queue if
@@ -351,18 +342,13 @@ class Terrain_Manager():
         exclusively all plots with mines have been marked.
         """
 
-        mines = self.mine_quantity
-
-        # Get a list with the types of all marked plots
-        # If the player has marked them all properly,
-        # all(marked) should return True
-        marked = [
-            plot.type for plot in self.plots
-            if plot.state == 1
-        ]
-
-        if self.marked_mines == mines:
-            if all(marked):
+        if self.marked_mines == self.mine_quantity:
+            # If the player has marked all mines properly,
+            # all() should return True
+            if all([
+                plot.type for plot in self.plots
+                if plot.state == 1
+            ]):
                 print('Victory!')
                 self.play_state = 2
                 self.reveal_all()
@@ -373,21 +359,21 @@ class Terrain_Manager():
 
         for plot in self.plots:
             if not plot.revealed:
+
                 # If the plot had a mine
                 if plot.type == 1:
                     # But was not marked
                     if plot.state == 0:
-                        plot.reveal(PLOT_TILES[11])
+                        plot.reveal(11)
                     # But was marked
                     elif plot.state == 1:
-                        plot.reveal(PLOT_TILES[13])
+                        plot.reveal(13)
+
                 # If the plot was safe but was marked
                 elif plot.type == 0 and plot.state == 1:
-                    plot.reveal(PLOT_TILES[12])
+                    plot.reveal(12)
                 else:
-                    plot.reveal(PLOT_TILES[
-                        self.get_adjacent_mines(plot)
-                    ])
+                    plot.reveal(self.get_adjacent_mines(plot))
 
 
     def restart(self):
@@ -399,7 +385,6 @@ class Terrain_Manager():
 
         self.__generate_mine_map()
         self.__generate_plots()
-
 
 
 class Plot():
@@ -422,14 +407,13 @@ class Plot():
 
 
     def reveal(self, tile):
-        """ Reveal the contents of the plot,
-        update plot tile to display `tile`.
+        """ Reveal the contents of the plot by updating
+        plot tile to display PLOT_TILES[tile].
         """
-
         self.revealed = True
         # The destination coordinates are relative to
         # the plot's surface.
-        self.surface.blit(tile, (0, 0))
+        self.surface.blit(PLOT_TILES[tile], (0, 0))
 
 
     def toggle_state(self):
