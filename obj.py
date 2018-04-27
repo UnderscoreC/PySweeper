@@ -13,14 +13,18 @@ from pygame import font, surface, time
 from const import (
     TERRAIN_MARGIN, PLOT_PADDING,
     PLOT_SIZE, PLOT_TILES,
-    FONT_PATH, DISPLAY_HEIGHT
+    FONT_PATH, SCREEN_SIZE
 )
+
 
 # Font preloading
 font.init()
 SF = {}
 
-for size in (32, 64, int(1 / 12 * DISPLAY_HEIGHT)):
+STAT_SIZE = TERRAIN_MARGIN
+TITLE_SIZE = int(1 / 8 * SCREEN_SIZE)
+
+for size in (STAT_SIZE, TITLE_SIZE):
     SF[size] = font.Font(FONT_PATH, size)
 
 
@@ -487,8 +491,7 @@ class Stat_Manager():
     def _render(self, text, font, color, bcolor=None):
         """ Return a surface on which text is rendered. """
 
-        rendered = font.render(str(text), True, color, bcolor)
-        return rendered
+        return font.render(str(text), True, color, bcolor)
 
 
     def __render_options(self):
@@ -496,7 +499,7 @@ class Stat_Manager():
 
             restart = {
                 's': self._render(
-                    "Restart", SF[int(1 / 12 * DISPLAY_HEIGHT)],
+                    "Restart", SF[TITLE_SIZE],
                     (255, 255, 255), (0, 0, 0)
                 )
             }
@@ -509,7 +512,7 @@ class Stat_Manager():
 
             show_board = {
                 's': self._render(
-                    "Show board", SF[int(1 / 12 * DISPLAY_HEIGHT)],
+                    "Show board", SF[TITLE_SIZE],
                     (255, 255, 255), (0, 0, 0)
                 )
             }
@@ -518,11 +521,13 @@ class Stat_Manager():
                 (self.size - show_board['w']) / 2,
                 3 / 5 * self.size
             )
-            show_board['r'] = show_board['s'].get_rect(topleft=show_board['c'])
+            show_board['r'] = show_board['s'].get_rect(
+                topleft=show_board['c']
+            )
 
             defeat = {
                 's': self._render(
-                    "You lost!", SF[int(1 / 12 * DISPLAY_HEIGHT)],
+                    "You lost!", SF[TITLE_SIZE],
                     (254, 0, 0), (0, 0, 0)
                 )
             }
@@ -535,7 +540,7 @@ class Stat_Manager():
 
             victory = {
                 's': self._render(
-                    "You won!", SF[int(1 / 12 * DISPLAY_HEIGHT)],
+                    "You won!", SF[TITLE_SIZE],
                     (0, 200, 83), (0, 0, 0)
                 )
             }
@@ -548,7 +553,8 @@ class Stat_Manager():
 
             escape = {
                 's': self._render(
-                    " Return ", SF[32], (0, 0, 0), (245, 245, 245)
+                    " Return ", SF[STAT_SIZE],
+                    (0, 0, 0), (245, 245, 245)
                 )
             }
             escape['w'] = escape['s'].get_width()
@@ -581,7 +587,7 @@ class Stat_Manager():
                 '0' if ls(int(self.time['s'] / 1000)) < 2 else '',
                 self.time['m'], int(self.time['s'] / 1000)
             ),
-            SF[32], (255, 255, 255)
+            SF[STAT_SIZE], (255, 255, 255)
         )
 
         stats = self.terrain.get_stats()
@@ -594,14 +600,19 @@ class Stat_Manager():
                 ' ' * (2 - ls(mm)),
                 mm,
             ),
-            SF[32], (255, 255, 255)
+            SF[STAT_SIZE], (255, 255, 255)
         )
 
         height = (TERRAIN_MARGIN - time.get_height()) / 2
 
-        target.blit(time, (1 / 5 * self.size, height))
+        target.blit(time, (TERRAIN_MARGIN, height))
         target.blit(
-            marked, (4 / 5 * self.size - marked.get_width(), height)
+            marked, (
+                self.size
+                - TERRAIN_MARGIN
+                - marked.get_width(),
+                height
+            )
         )
 
 
