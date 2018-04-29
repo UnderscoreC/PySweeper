@@ -40,7 +40,7 @@ class Terrain_Manager():
         self.plot_quantity = terrain_side ** 2
 
 
-        self.is_first_click = True
+        self.has_clicked = False
         # 0 = playing, 1 = lost, 2 = won
         self.play_state = 0
         self.marked_mines = 0
@@ -182,7 +182,7 @@ class Terrain_Manager():
                             # Clicked on mined plot
                             if plot.type == 1:
                                 # Player can't die on first click
-                                if not self.is_first_click:
+                                if self.has_clicked:
                                     plot.reveal(14)
                                     print('You died!')
                                     self.reveal_all()
@@ -194,7 +194,7 @@ class Terrain_Manager():
                                 else:
                                     self.relocate_mine(plot)
 
-                            self.is_first_click = False
+                            self.has_clicked = True
 
                             adjacent = self.get_adjacent_mines(plot)
 
@@ -382,7 +382,7 @@ class Terrain_Manager():
 
     def restart(self):
         """ Restart new game. """
-        self.is_first_click = True
+        self.has_clicked = False
         self.play_state = 0
         self.marked_mines = 0
         self.plots = []
@@ -471,7 +471,12 @@ class Stat_Manager():
 
         self.clock.tick()
 
+        if not self.terrain.has_clicked:
+            # Player hasn't begun playing
+            return
+
         if self.terrain.play_state:
+            # Not playing
             # Continue calling this function
             # so that when we start it again,
             # it does not jump to add a large
