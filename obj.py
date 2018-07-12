@@ -6,7 +6,7 @@
 
 # pylint: disable=no-member
 
-from random import randrange, shuffle
+from random import randrange, shuffle, choice
 
 from pygame import font, surface, time
 
@@ -170,6 +170,8 @@ class Terrain_Manager():
     def update_plots(self, lmouse, rmouse, mouse_pos):
         """ Update plots according to user interaction. """
 
+        # If play_state is nonzero,
+        # there's nothing to update
         if self.play_state:
             return
 
@@ -179,29 +181,32 @@ class Terrain_Manager():
                     if plot.state == 0:
                         if plot.rect.collidepoint(mouse_pos):
 
+                            if not self.has_clicked:
+                                # Player can't die on first click.
+                                # Clear plot and zone around it
+                                # to make sure it's not
+                                # impossible
+                                self.clear_area(plot)
+                                self.has_clicked = True
+
+
                             # Clicked on mined plot
                             if plot.type == 1:
-                                # Player can't die on first click
-                                if self.has_clicked:
-                                    plot.reveal(14)
-                                    print('You died!')
-                                    self.reveal_all()
-                                    self.play_state = 1
-                                    # Return so it doesn't
-                                    # repaint over
-                                    return
-
-                                else:
-                                    self.relocate_mine(plot)
-
-                            self.has_clicked = True
+                                plot.reveal(14)
+                                print('You died!')
+                                self.reveal_all()
+                                self.play_state = 1
+                                # Return so it doesn't
+                                # repaint over
+                                return
 
                             adjacent = self.get_adjacent_mines(plot)
-
                             if adjacent == 0:
-                                # There aren't any, check around
+                                # No adjacent mines, check further
                                 self.reveal_adjacent_plots(plot)
 
+                            # Reveal plot according to quantity
+                            # of surrounding mines
                             plot.reveal(adjacent)
 
                 elif rmouse:
@@ -216,29 +221,39 @@ class Terrain_Manager():
                     self.check_victory()
 
 
-    def relocate_mine(self, plot):
+    def clear_area(self, plot):
         """ Move a mine from a plot to another one.
         Only used once per game, if the player's first
         click is on a mine.
         """
 
-        relocated = False
+        zone = [
+            plot for plot in self.get_adjacent_plots(plot)
+        ]
+        # Don't omit clicked plot
+        zone.append(plot)
 
-        while not relocated:
-            new_target = self.get_plot(
-                randrange(0, self.terrain_side),
-                randrange(0, self.terrain_side)
-            )
+        moved = 0
 
-            if new_target.type == 0:
-                plot.type = 0
-                new_target.type = 1
-                relocated = True
+        for plot in zone:
+            if plot.type == 1:
+                moved += 1
+                while True:
+                    new_target = self.get_plot(
+                        randrange(0, self.terrain_side),
+                        randrange(0, self.terrain_side)
+                    )
+                    if (
+                        new_target not in zone
+                        and new_target.type == 0
+                    ):
+                        new_target.type = 1
+                        plot.type = 0
+                        break
 
-        print("Mined plot relocated to {};{}".format(
-            new_target.x_offset, new_target.y_offset
-        ))
-        # self.print_mine_map()
+        # print("Relocated {} mine{}".format(
+        #     moved, 's' if moved != 1 else '')
+        # )
 
 
     def get_adjacent_plots(self, plot):
@@ -283,13 +298,11 @@ class Terrain_Manager():
         to plot.
         """
 
-        quantity = len([
+        return len([
             plot for plot in
             self.get_adjacent_plots(plot)
             if plot.type == 1
         ])
-
-        return quantity
 
 
     def get_plot(self, x_offset, y_offset):
@@ -300,7 +313,8 @@ class Terrain_Manager():
         shift = (y_offset * self.terrain_side) + x_offset
 
         if (
-            shift >= 0 and shift < self.plot_quantity
+            # Ensure the plot is the one we're after
+            shift < self.plot_quantity
             and self.plots[shift].x_offset == x_offset
             and self.plots[shift].y_offset == y_offset
         ):
@@ -348,12 +362,12 @@ class Terrain_Manager():
 
         if self.marked_mines == self.mine_quantity:
             # If the player has marked all mines properly,
-            # all() should return True
+            # this should return True
             if all([
                 plot.type for plot in self.plots
                 if plot.state == 1
             ]):
-                print('Victory!')
+                print('You did it!')
                 self.play_state = 2
                 self.reveal_all()
 
@@ -389,6 +403,16 @@ class Terrain_Manager():
 
         self.__generate_mine_map()
         self.__generate_plots()
+
+        print(choice([
+            "Here we go again!",
+            "A new game brings new possibilities!",
+            "Good luck!",
+            "You can do it!",
+            "And another one!",
+            "There's just no stopping you, is there?",
+            "GOGOGO!"
+        ]))
 
 
 class Plot():
@@ -494,7 +518,7 @@ class Stat_Manager():
 
 
     def _render(self, text, font, color, bcolor=None):
-        """ Return a surface on which text is rendered. """
+        """ Return a surface on which `text` is rendered. """
 
         return font.render(str(text), True, color, bcolor)
 
@@ -666,7 +690,6 @@ class Stat_Manager():
                             self.board_shown = False
                     else:
                         if b == 'r':
-                            print("New game! Here we go!")
                             self.terrain.restart()
                             self.time['m'] = 0
                             self.time['s'] = 0.0
